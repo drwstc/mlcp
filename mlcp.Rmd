@@ -1,0 +1,78 @@
+---
+title: "Practical Machine Learning Course Project - Weight Lifting Ecercises"
+author: "drwstc"
+date: "2023-05-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Introduction
+
+In this course project of practical machine learning, the Weight Lifting Exercises Dataset (from the source: http://groupware.les.inf.puc-rio.br/har) was analysed and modeled in order to predict "how (well)" an activity was performed by the wearer. In the dataset, accelerometers on the belt, forearm, arm, and dumbell of 6 participants were recorded during performing barbell lifts correctly and incorrectly in 5 different ways (the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). in this report, four methods including classification tree, random forest, boost and linear discriminant analysis were compared by applying for training to build the model and then predict 20 different test cases. 
+
+## 2. Data Exploratory
+
+The dataset of training and testing was loaded with dimension of 19622 * 160 and 20 * 160 respectively. After removing the variables with NA and the column of labeling observation, the dimension reduced to 19622 * 53 and 20 * 53 respectively for training and testing.
+
+```{r, cache=TRUE,results='hide'}
+library(caret)
+# reading the dataset
+training0 <- as.data.frame(read.csv("pml-training.csv"))
+testing0 <- as.data.frame(read.csv("pml-testing.csv"))
+# remove all the columns contain any NA in training and testing dataset
+a <- sapply(testing0[1:160],anyNA)
+training <- training0[which(a == FALSE)]
+testing <- testing0[which(a == FALSE)]
+```
+
+## 3. Training and Modeling 
+Four methods including classification tree, random forest, boost and linear discriminant analysis were applied to build the model as mod1, mod2, mod3 and mod4 respectively. The 100 fold cross validation was used for all the training.
+
+```{r, cache=TRUE,results='hide'}
+# setup cross validation parameters of 100 folds (k = 100), repeated 1 time.
+fitcont <- trainControl(method = "repeatedcv", number = 100, repeats =1)
+# mod1 applied classification trees
+mod1 <- train(classe~., data = training[,-c(1:7)], method = "rpart", trControl = fitcont)
+# mod2 applied Radon Forests
+mod2 <- train(classe~., data = training[,-c(1:7)], method = "rf",trControl = fitcont)
+# mod3 applied Boosting
+mod3 <-  train(classe~., data = training[,-c(1:7)], method = "gbm",trControl = fitcont)
+# mod4 applied Linear Discriminant Analysis
+mod4 <- train(classe~., data = training[,-c(1:7)], method = "lda",trControl = fitcont)
+```
+
+## 4. Results and Dissussion 
+
+The model with highest accuracy was mod2 (random forest) with 99.59%, but took longest time of 19113 seconds for training (Table 1). The model of mod1 (classification tree) showed lowest accuracy of 50.04% and just taking 52 seconds for training. The mod4 (linear discriminant analysis) took shortest time of 49.88 seconds for training with 70.17% accuracy. For mod3 (boosting), it just took half time of mod2 (9235 seconds) for training and achieved 96.32% accuracy.
+
+```{r, cache=TRUE}
+# table 1 
+modresults <- data.frame(mod1 = c(max(mod1$results$Accuracy), sum(mod1$times$everything[1:3])), mod2 = c(max(mod2$results$Accuracy), sum(mod2$times$everything[1:3])),mod3 = c(max(mod3$results$Accuracy), sum(mod3$times$everything[1:3])),mod4 = c(max(mod4$results$Accuracy), sum(mod4$times$everything[1:3])))
+row.names(modresults) <- c("Accuracy", "Time")
+# table 2
+pred1 <- predict(mod1, testing)
+pred2 <- predict(mod2, testing)
+pred3 <- predict(mod3, testing)
+pred4 <- predict(mod4, testing)
+predDF <- data.frame(pred1 = pred1, pred2 = pred2, pred3 = pred3, pred4 = pred4)
+```
+
+```{r table 1}
+library(knitr)
+kable(modresults,  digits = 4, caption = "Table1. Models Comparison of Accuracy and Training Time")
+```
+
+Afterwards, the 4 different models were applied to predict 20 different test cases. The results were shown in Table2 that the mod2 and mod3 gave the same prediction as pred2 and pred3 respectively. Therefore, the mod3 (boosting) was considering as the best model for this dataset.
+
+```{r table 2}
+library(knitr)
+kable(predDF,  digits = 4, caption = "Table2. Prediction Results of 20 test cases")
+```
+
+## 5.Summary
+
+The 4 different models built by classification tree, random forest, boost and linear discriminant analysis with cross validation (100 fold) were compared. The mod3 (boosting) was model chosen based on the accuracy 96.32% and half training time of best model of mod2 (accuracy: 99.56%) which gave the same prediction results. 
+
